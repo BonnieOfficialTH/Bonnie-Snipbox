@@ -1,0 +1,40 @@
+import { useEffect, useRef, useState } from 'react';
+import { CalendarDays, Check, ChevronDown, Clock3, Plus, Sparkles, WandSparkles, X } from 'lucide-react';
+import CustomSelect from '../../components/CustomSelect';
+import { DATE_FORMATS, customFieldToken, normalizeDynamicFieldTokens, renderContent } from '../../lib/templateEngine';
+
+const fieldTypes = [
+  {id:'today',type:'date',label:'วันที่ปัจจุบัน',value:'today',icon:CalendarDays},
+  {id:'yesterday',type:'date',label:'เมื่อวาน',value:'yesterday',icon:CalendarDays},
+  {id:'tomorrow',type:'date',label:'วันพรุ่งนี้',value:'tomorrow',icon:CalendarDays},
+  {id:'month_start',type:'date',label:'วันแรกของเดือน',value:'monthStart',icon:CalendarDays},
+  {id:'month_end',type:'date',label:'วันสุดท้ายของเดือน',value:'monthEnd',icon:CalendarDays},
+  {id:'day',type:'day',label:'วันที่ของเดือน',value:'day',icon:CalendarDays},
+  {id:'time',type:'time',label:'เวลาปัจจุบัน',value:'now',icon:Clock3},
+  {id:'weekday',type:'weekday',label:'วันในสัปดาห์',value:'weekday',icon:CalendarDays},
+  {id:'month',type:'month',label:'ชื่อเดือน',value:'month',icon:CalendarDays},
+  {id:'year',type:'year',label:'ปีปัจจุบัน',value:'year',icon:CalendarDays}
+];
+const clone = value => JSON.parse(JSON.stringify(value));
+
+export default function EditorModal({ data, collections, onClose, onSave, timezone, defaultDateFormat }) {
+  const [draft,setDraft]=useState(()=>({...clone(data),...normalizeDynamicFieldTokens(data.content,data.dynamicFields||[])})),[tab,setTab]=useState('write'),[insert,setInsert]=useState(false);
+  const [customFieldModalOpen,setCustomFieldModalOpen]=useState(false),[customFieldName,setCustomFieldName]=useState('');
+  const insertMenuRef=useRef(null);
+  useEffect(()=>{if(!insert)return undefined;const closeMenu=event=>{if(event.type==='keydown'&&event.key==='Escape'){setInsert(false);return;}if(event.type==='pointerdown'&&!insertMenuRef.current?.contains(event.target))setInsert(false);};document.addEventListener('pointerdown',closeMenu);document.addEventListener('keydown',closeMenu);return()=>{document.removeEventListener('pointerdown',closeMenu);document.removeEventListener('keydown',closeMenu);};},[insert]);
+  const update=(key,value)=>setDraft(current=>({...current,[key]:value}));
+  const addField=item=>{setDraft(current=>{const exists=current.dynamicFields.some(field=>field.id===item.id);const field={id:item.id,type:item.type,label:item.label,value:item.value,format:defaultDateFormat||'DDMMYY'};return {...current,dynamicFields:exists?current.dynamicFields:[...current.dynamicFields,field],content:current.content+'{{'+item.id+'}}'};});setInsert(false);};
+  const addCustom=()=>{setCustomFieldName('');setCustomFieldModalOpen(true);};
+  const saveCustomField=event=>{event.preventDefault();const label=customFieldName.trim();if(!label)return;setDraft(current=>{const id=customFieldToken(label,current.dynamicFields);return {...current,dynamicFields:[...current.dynamicFields,{id,type:'custom',label,defaultValue:''}],content:current.content+'{{'+id+'}}'};});setInsert(false);setCustomFieldModalOpen(false);};
+  const preview=renderContent(draft.content,draft.dynamicFields,{},timezone);
+  const collectionOptions=[{value:'',label:'No collection'},...collections.filter(collection=>collection.id!=='all').map(collection=>({value:collection.id,label:collection.name}))];
+  const dateFormatOptions=DATE_FORMATS.map(([format])=>({value:format,label:format}));
+  const updateFieldFormat=(fieldId,format)=>setDraft(current=>({...current,dynamicFields:current.dynamicFields.map(item=>item.id===fieldId?{...item,format}:item)}));
+  const removeField=fieldId=>setDraft(current=>({...current,dynamicFields:current.dynamicFields.filter(item=>item.id!==fieldId),content:current.content.replaceAll('{{'+fieldId+'}}','')}));
+
+  return <><div className="modal-backdrop editor-backdrop" onMouseDown={event=>event.target===event.currentTarget&&onClose()}><div className="editor-modal"><div className="modal-header"><div><div className="eyebrow">YOUR WORDS, YOUR WAY</div><h2>{draft.id?'Edit snippet':'New snippet'}</h2></div><button className="modal-close" onClick={onClose}><X size={18}/></button></div><div className="editor-fields"><label className="form-field"><span>Snippet name</span><input autoFocus value={draft.title} onChange={event=>update('title',event.target.value)} placeholder="Give your snippet a name"/></label><label className="form-field"><span>Collection</span><CustomSelect ariaLabel="Collection" value={draft.categoryId ?? ''} onChange={value=>update('categoryId',value)} options={collectionOptions}/></label></div><div className="editor-tabs"><button className={tab==='write'?'current':''} onClick={()=>setTab('write')}>Write</button><button className={tab==='preview'?'current':''} onClick={()=>setTab('preview')}>Preview</button><span className="editor-hint"><WandSparkles size={13}/> Keep it simple</span></div>{tab==='write'?<><div className="editor-toolbar" ref={insertMenuRef}><button onClick={()=>setInsert(!insert)}><Sparkles size={14}/> Insert smart content <ChevronDown size={13}/></button>{insert&&<div className="insert-menu"><div className="insert-title">AUTOMATIC DETAILS</div>{fieldTypes.map(field=><button key={field.id} onClick={()=>addField(field)}><field.icon size={15}/>{field.label}<code>{`{{${field.id}}}`}</code></button>)}<div className="insert-title custom-title">YOUR OWN DETAILS</div><button onClick={addCustom}><Plus size={15}/> Custom information</button></div>}</div><textarea className="content-editor" value={draft.content} onChange={event=>update('content',event.target.value)} placeholder={'Write your reusable text here…\n\nUse “Insert smart content” to add dates, time or your own details.'} spellCheck="false"/><div className="editor-bottom-hint">Tip: line breaks and empty lines are preserved exactly as written.</div></>:<pre className="editor-preview">{preview||'Your live preview will appear here.'}</pre>}
+  {draft.dynamicFields.length>0&&<div className="fields-config"><div className="fields-heading"><span>SMART CONTENT IN THIS SNIPPET</span><small>{draft.dynamicFields.length} items</small></div>{draft.dynamicFields.map(field=><div className="field-config" key={field.id}><span className="field-config-name"><Sparkles size={13}/>{field.label}<code>{`{{${field.id}}}`}</code></span>{field.type==='date'?<CustomSelect ariaLabel={`${field.label} date format`} value={field.format||'DDMMYY'} onChange={format=>updateFieldFormat(field.id,format)} options={dateFormatOptions}/>:field.type==='custom'?<input placeholder="Default value (optional)" value={field.defaultValue||''} onChange={event=>setDraft(current=>({...current,dynamicFields:current.dynamicFields.map(item=>item.id===field.id?{...item,defaultValue:event.target.value}:item)}))}/>:<span className="auto-value">Updates automatically</span>}<button title="Remove smart content" onClick={()=>removeField(field.id)}><X size={14}/></button></div>)}</div>}
+  <div className="modal-footer"><button className="cancel-btn" onClick={onClose}>Cancel</button><button className="primary-btn" disabled={!draft.title.trim()} onClick={()=>onSave(draft)}><Check size={16}/> Save snippet</button></div></div></div>
+  {customFieldModalOpen&&<div className="modal-backdrop custom-field-backdrop" onMouseDown={event=>event.target===event.currentTarget&&setCustomFieldModalOpen(false)}><form className="custom-field-modal" role="dialog" aria-modal="true" aria-labelledby="custom-field-title" onSubmit={saveCustomField}><div className="eyebrow">YOUR OWN DETAILS</div><h2 id="custom-field-title">Add custom information</h2><p>Name the information you want to fill in when using this snippet.</p><label className="form-field"><span>Field name</span><input autoFocus value={customFieldName} onChange={event=>setCustomFieldName(event.target.value)} placeholder="e.g. Project name"/></label><div className="modal-footer"><button type="button" className="cancel-btn" onClick={()=>setCustomFieldModalOpen(false)}>Cancel</button><button type="submit" className="primary-btn" disabled={!customFieldName.trim()}><Plus size={15}/> Add field</button></div></form></div>}
+  </>;
+}
