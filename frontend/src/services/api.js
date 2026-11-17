@@ -1,10 +1,43 @@
-const API_BASE =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? 'http://localhost:3001/api' : '/api');
+function getApiBase() {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+
+  if (typeof window !== 'undefined') {
+    const isLocalHost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
+    // When running in production (e.g. on Vercel or any non-localhost domain)
+    if (!isLocalHost) {
+      // If user provided a valid remote HTTPS backend URL, use it
+      if (
+        envUrl.startsWith('https://') ||
+        (envUrl.startsWith('http://') &&
+          !envUrl.includes('localhost') &&
+          !envUrl.includes('127.0.0.1'))
+      ) {
+        return envUrl.replace(/\/+$/, '');
+      }
+      // Otherwise, ALWAYS use same-origin relative path /api (Vercel Serverless Function)
+      return '/api';
+    }
+  }
+
+  // Local development fallback
+  if (
+    envUrl &&
+    (envUrl.startsWith('http://') || envUrl.startsWith('https://'))
+  ) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  return 'http://localhost:3001/api';
+}
+
+const API_BASE = getApiBase();
 
 async function request(endpoint, options = {}) {
   try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
+    const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    const res = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -13,7 +46,9 @@ async function request(endpoint, options = {}) {
     });
     const json = await res.json();
     if (!json.ok) {
-      throw new Error(json.error?.message || `Request failed with status ${res.status}`);
+      throw new Error(
+        json.error?.message || `Request failed with status ${res.status}`
+      );
     }
     return json.data;
   } catch (error) {
