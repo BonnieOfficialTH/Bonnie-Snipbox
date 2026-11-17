@@ -126,3 +126,18 @@ footer{border-color:#eee8f5}.toast span{background:#bcebd2;color:#28784b}
 .field-config-name code,.insert-menu button code{font:10px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;color:#8550ae;background:var(--soft);border-radius:5px;padding:4px 5px}
 .field-config-name code{margin-left:auto;white-space:nowrap}
 .insert-menu button code{margin-left:auto;flex:none}
+
+
+/* Sync Status Badge */
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--line);background:var(--paper);transition:all .2s ease}
+.status-pill.cloud{color:#15803d;border-color:#bbf7d0;background:#f0fdf4}
+.dark .status-pill.cloud{color:#4ade80;border-color:#166534;background:#14532d33}
+.status-pill.syncing{color:#b45309;border-color:#fde68a;background:#fffbeb}
+.dark .status-pill.syncing{color:#fbbf24;border-color:#78350f;background:#78350f33}
+.status-pill.offline{color:#64748b;border-color:#e2e8f0;background:#f8fafc}
+.dark .status-pill.offline{color:#94a3b8;border-color:#334155;background:#1e293b33}
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex:none}
+.status-pill.cloud .status-dot{background:#22c55e}
+.status-pill.syncing .status-dot{background:#f59e0b;animation:pulse 1.2s infinite}
+.status-pill.offline .status-dot{background:#94a3b8}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}

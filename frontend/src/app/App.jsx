@@ -98,7 +98,7 @@ export default function App() {
   const deleteItem = item => { if (window.confirm(`Delete “${item.title}”? This cannot be undone.`)) { library.deleteSnippet(item.id); notify('Snippet deleted'); } setMenuId(null); };
 
   return <div className={`app ${preferences.theme === 'dark' ? 'dark' : ''}`}>
-    <TopBar onHelp={() => notify('Select a snippet to preview, then copy it in one click.')} onSettings={() => setSettingsOpen(true)} />
+    <TopBar syncStatus={library.syncStatus} onHelp={() => notify('Select a snippet to preview, then copy it in one click.')} onSettings={() => setSettingsOpen(true)} />
     <main className="page">
       <ArtistBanner image={preferences.bannerImage} onImageChange={image => updatePreference('bannerImage', image)} greeting={greeting} />
       <div className="toolbar-row"><div className="search-wrap"><Search size={18}/><input value={library.search} onChange={event => library.setSearch(event.target.value)} placeholder="Search your snippets..."/>{library.search&&<button className="clear-search" onClick={()=>library.setSearch('')}><X size={16}/></button>}<kbd>⌘ K</kbd></div><button className="primary-btn" onClick={openNew}><Plus size={17}/> New snippet</button></div>
