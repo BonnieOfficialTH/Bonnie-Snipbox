@@ -10,8 +10,8 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
-  // Health check
-  app.get('/api/health', (req, res) => {
+  // Health check handler
+  const healthHandler = (req, res) => {
     res.json({
       ok: true,
       data: {
@@ -20,12 +20,20 @@ export function createApp() {
         timestamp: Date.now(),
       },
     });
-  });
+  };
 
-  // API Routes
+  app.get('/api/health', healthHandler);
+  app.get('/health', healthHandler);
+
+  // Mount routes with and without /api prefix for maximum compatibility (Vercel serverless + Standalone)
   app.use('/api/bootstrap', bootstrapRoutes);
+  app.use('/bootstrap', bootstrapRoutes);
+
   app.use('/api/snippets', snippetsRoutes);
+  app.use('/snippets', snippetsRoutes);
+
   app.use('/api/collections', collectionsRoutes);
+  app.use('/collections', collectionsRoutes);
 
   // 404 handler
   app.use((req, res) => {
