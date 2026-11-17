@@ -1,11 +1,28 @@
 import { initialTemplates, normalizeDynamicFieldTokens } from '../../lib/templateEngine';
 
-const KEYS = { snippets: 'snippet.templates', collections: 'snippet.categories', preferences: 'snippet.preferences' };
-const read = (key, fallback) => {
-  try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : fallback; }
-  catch { return fallback; }
+const KEYS = {
+  snippets: 'snippet.templates',
+  collections: 'snippet.categories',
+  preferences: 'snippet.preferences',
+  metadata: 'snippet.user_metadata',
 };
-const write = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+
+const read = (key, fallback) => {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const write = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('[Storage] Write failed:', e);
+  }
+};
 
 export const defaultCollections = [
   { id: 'all', name: 'All snippets', color: '#a78bfa' },
@@ -16,13 +33,36 @@ export const defaultCollections = [
 ];
 
 export const repository = {
-  getSnippets: () => read(KEYS.snippets, initialTemplates).map(snippet => ({
-    ...snippet,
-    ...normalizeDynamicFieldTokens(snippet.content, snippet.dynamicFields || []),
-  })),
+  // Local metadata (favorites, lastUsedAt per user device)
+  getMetadata: () => read(KEYS.metadata, {}),
+  saveMetadata: value => write(KEYS.metadata, value),
+
+  // Snippets
+  getSnippets: () => {
+    const meta = read(KEYS.metadata, {});
+    return read(KEYS.snippets, initialTemplates).map(snippet => {
+      const userMeta = meta[snippet.id] || {};
+      return {
+        ...snippet,
+        isFavorite: userMeta.isFavorite ?? snippet.isFavorite ?? false,
+        lastUsedAt: userMeta.lastUsedAt ?? snippet.lastUsedAt ?? null,
+        ...normalizeDynamicFieldTokens(snippet.content, snippet.dynamicFields || []),
+      };
+    });
+  },
   saveSnippets: value => write(KEYS.snippets, value),
+
+  // Collections
   getCollections: () => read(KEYS.collections, defaultCollections),
   saveCollections: value => write(KEYS.collections, value),
-  getPreferences: () => read(KEYS.preferences, { timezone: 'Asia/Bangkok', theme: 'light', dateFormat: 'DD/MM/YYYY', bannerImage: '' }),
+
+  // Preferences
+  getPreferences: () =>
+    read(KEYS.preferences, {
+      timezone: 'Asia/Bangkok',
+      theme: 'light',
+      dateFormat: 'DD/MM/YYYY',
+      bannerImage: '',
+    }),
   savePreferences: value => write(KEYS.preferences, value),
 };
